@@ -15,3 +15,8 @@ PDP-8 Emulator Project in C++
 * Interactive CLI
 * PTTY
 * GUI
+
+## Main Manuals
+
+* [Small Computer Handbook, 1973 ed.](http://www.vandermark.ch/pdp8/uploads/PDP8/PDP8.Manuals/DEC-S8-OSSCH-A.pdf)
+* [Processor Maintenance Manual, vol. 1](http://www.vandermark.ch/pdp8/uploads/PDP8/PDP8.Manuals/DEC-8E-HR1C-D.pdf)
