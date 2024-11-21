@@ -7,10 +7,12 @@
 #include "../defs.h"
 
 struct Memory {
+    struct MemBank {
+        static constexpr size_t BANKSIZE = 4096;
+        std::array<word_t, BANKSIZE> data;
+    };
 
-    static constexpr size_t BANKSIZE = 4096;
-
-    std::array<word_t, BANKSIZE> mem;
+    std::array<MemBank, 8> mem;
 };
 
 #endif
