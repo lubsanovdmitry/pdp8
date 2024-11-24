@@ -53,11 +53,17 @@ private:
 
     void MemWr();
 
+    void T2Execute();
+
+    void T3Execute();
+
     void T3Fetch();
 
     void T4Fetch();
 
     void T4Defer();
+
+    void T4Execute();
 
     void OPR();
 

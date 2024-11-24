@@ -5,11 +5,9 @@
 void PDP8I::T1() {
     switch (mstate) {
         case MajState::Fetch:
-            MemRead();
             regs.PC = EMU::incr(regs.MA);
             break;
         case MajState::Defer:
-
             break;
         case MajState::Execute:
             break;
@@ -28,6 +26,7 @@ void PDP8I::T1() {
 void PDP8I::T2() {
     switch (mstate) {
         case MajState::Fetch:
+            MemRead();
             regs.MB = regs.MEM;
             regs.IR = (regs.MEM & EMU::inst) >> 9;
             break;
@@ -41,6 +40,7 @@ void PDP8I::T2() {
             MemWr();
             break;
         case MajState::Execute:
+            T2Execute();
             break;
         case MajState::WordCount:
             break;
@@ -85,6 +85,7 @@ void PDP8I::T4() {
             T4Defer();
             break;
         case MajState::Execute:
+            T4Execute();
             break;
         case MajState::WordCount:
             break;
@@ -93,6 +94,33 @@ void PDP8I::T4() {
         case MajState::Brk:
             break;
     }
+}
+
+void PDP8I::T2Execute() {
+    MemRead();
+    switch (static_cast<EMU::Instr>(regs.IR)) {
+        case EMU::Instr::AND... EMU::Instr::TAD:
+            regs.MB = regs.MEM;
+            break;
+        case EMU::Instr::ISZ:
+            regs.MB = EMU::incr(regs.MEM);
+            flags.skip = false;
+            if (EMU::incr_l(regs.MEM) & EMU::link) {
+                flags.skip = true;
+            }
+            break;
+        case EMU::Instr::DCA:
+            regs.MB = regs.AC;
+            break;
+        case EMU::Instr::JMS:
+            if (flags.skip) {
+                regs.MB = EMU::incr(regs.PC);
+            } else {
+                regs.MB = regs.PC;
+            }
+            break;
+    }
+    MemWr();
 }
 
 void PDP8I::T3Fetch() {
@@ -114,6 +142,31 @@ void PDP8I::T3Fetch() {
             OPR();
             break;
         default:
+            break;
+    }
+}
+
+void PDP8I::T3Execute() {
+    word_t res{};
+    switch (static_cast<EMU::Instr>(regs.IR)) {
+        case EMU::Instr::AND:
+            regs.AC = regs.AC & regs.MB;
+            break;
+        case EMU::Instr::TAD:
+            res = regs.AC + regs.MEM;
+            regs.L = res & EMU::link;
+            regs.AC = res & EMU::mask;
+            break;
+        case EMU::Instr::ISZ:
+            break;
+        case EMU::Instr::DCA:
+            regs.AC = 0;
+            break;
+        case EMU::Instr::JMS:
+            regs.PC = EMU::incr(regs.MA);
+            break;
+        default:
+            std::logic_error{"Illegal opcode at this stage"};
             break;
     }
 }
@@ -171,6 +224,23 @@ void PDP8I::T4Defer() {
         } else {
             regs.MA = regs.MEM;
         }
+    }
+}
+
+void PDP8I::T4Execute() {
+    if (flags.irq) {
+        regs.MA = 0;
+        regs.IR = EMU::Instr::JMS;
+        mstate = MajState::Execute;
+    } else if (flags.dma) {
+        throw std::runtime_error{"Databreak not implemented"};
+    } else {
+        if (flags.skip) {
+            regs.MA = EMU::incr(regs.PC);
+        } else {
+            regs.MA = regs.PC;
+        }
+        mstate = MajState::Fetch;
     }
 }
 
