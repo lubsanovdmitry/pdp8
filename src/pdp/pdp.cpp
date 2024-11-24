@@ -1,97 +1,109 @@
 #include "pdp.h"
 
+#include <stdexcept>
+
 void PDP8I::T1() {
-    switch (cpu_.mstate) {
-        case CPU::MajState::Fetch:
-            cpu_.regs.PC = EMU::incr(cpu_.regs.MA);
+    switch (mstate) {
+        case MajState::Fetch:
             MemRead();
+            regs.PC = EMU::incr(regs.MA);
             break;
-        case CPU::MajState::Defer:
+        case MajState::Defer:
+
             break;
-        case CPU::MajState::Execute:
+        case MajState::Execute:
             break;
-        case CPU::MajState::WordCount:
+        case MajState::WordCount:
+            throw std::runtime_error{"Databreaks not supported"};
             break;
-        case CPU::MajState::CurAddr:
+        case MajState::CurAddr:
+            throw std::runtime_error{"Databreaks not supported"};
             break;
-        case CPU::MajState::Brk:
+        case MajState::Brk:
+            throw std::runtime_error{"Databreaks not supported"};
             break;
     }
 }
 
 void PDP8I::T2() {
-    switch (cpu_.mstate) {
-        case CPU::MajState::Fetch:
-            cpu_.regs.MB = cpu_.regs.MEM;
-            cpu_.regs.IR = (cpu_.regs.MEM & EMU::inst) >> 9;
-            MemWr();
+    switch (mstate) {
+        case MajState::Fetch:
+            regs.MB = regs.MEM;
+            regs.IR = (regs.MEM & EMU::inst) >> 9;
             break;
-        case CPU::MajState::Defer:
-            if (EMU::is_autoidx(cpu_.regs.MA)) {
-                cpu_.regs.MB = EMU::incr(cpu_.regs.MEM);
+        case MajState::Defer:
+            MemRead();
+            if (EMU::is_autoidx(regs.MA)) {
+                regs.MB = EMU::incr(regs.MEM);
             } else {
-                cpu_.regs.MB = cpu_.regs.MEM;
+                regs.MB = regs.MEM;
             }
             MemWr();
             break;
-        case CPU::MajState::Execute:
+        case MajState::Execute:
             break;
-        case CPU::MajState::WordCount:
+        case MajState::WordCount:
             break;
-        case CPU::MajState::CurAddr:
+        case MajState::CurAddr:
             break;
-        case CPU::MajState::Brk:
+        case MajState::Brk:
             break;
     }
 }
 
 void PDP8I::T3() {
-    switch (cpu_.mstate) {
-        case CPU::MajState::Fetch:
-            DecodeT3();
+    switch (mstate) {
+        case MajState::Fetch:
+            T3Fetch();
             break;
-        case CPU::MajState::Defer:
-
+        case MajState::Defer:
+            if (regs.IR == static_cast<word_t>(EMU::Instr::JMP)) {
+                if (EMU::is_autoidx(regs.MA)) {
+                    regs.PC = EMU::incr(regs.MEM);
+                } else {
+                    regs.PC = regs.MEM;
+                }
+            }
             break;
-        case CPU::MajState::Execute:
+        case MajState::Execute:
             break;
-        case CPU::MajState::WordCount:
+        case MajState::WordCount:
             break;
-        case CPU::MajState::CurAddr:
+        case MajState::CurAddr:
             break;
-        case CPU::MajState::Brk:
+        case MajState::Brk:
             break;
     }
 }
 
 void PDP8I::T4() {
-    switch (cpu_.mstate) {
-        case CPU::MajState::Fetch:
-
+    switch (mstate) {
+        case MajState::Fetch:
+            T4Fetch();
             break;
-        case CPU::MajState::Defer:
-
+        case MajState::Defer:
+            T4Defer();
             break;
-        case CPU::MajState::Execute:
+        case MajState::Execute:
             break;
-        case CPU::MajState::WordCount:
+        case MajState::WordCount:
             break;
-        case CPU::MajState::CurAddr:
+        case MajState::CurAddr:
             break;
-        case CPU::MajState::Brk:
+        case MajState::Brk:
             break;
     }
 }
 
-void PDP8I::DecodeT3() {
-    switch (static_cast<EMU::Instr>(cpu_.regs.IR)) {
+void PDP8I::T3Fetch() {
+    switch (static_cast<EMU::Instr>(regs.IR)) {
         case EMU::Instr::JMP:
-            if (!(cpu_.regs.MB & 00400)) {
-                cpu_.regs.PC = cpu_.regs.MEM & 00177;
-                if (cpu_.regs.MB & 00200) {
+            if (!(regs.MB & 00400)) {
+                regs.PC = regs.MEM & 00177;
+                if (regs.MB & 00200) {
                     ;
                 } else {
-                    cpu_.regs.PC |= cpu_.regs.MA & 07600;
+                    regs.PC |= regs.MA & 07600;
                 }
             }
             break;
@@ -106,74 +118,131 @@ void PDP8I::DecodeT3() {
     }
 }
 
-void PDP8I::IOT() {
-}  // namespace
+void PDP8I::T4Fetch() {
+    switch (regs.IR) {
+        case static_cast<int>(EMU::Instr::AND)... static_cast<int>(EMU::Instr::JMS):
+            regs.MA = (regs.MEM & (M5 | M6 | M7 | M8 | M9 | M10 | M11)) |
+                      ((regs.MB & M4) ? (regs.MA & (M0 | M1 | M2 | M3 | M4)) : 0);
+            if (regs.MB & M3) {
+                mstate = MajState::Defer;
+            } else {
+                mstate = MajState::Execute;
+            }
+            break;
+        default:
+            if (flags.irq) {
+                regs.MA = 0;
+                regs.IR = static_cast<int>(EMU::Instr::JMS);
+                mstate = MajState::Execute;
+            } else if (flags.dma) {
+                33a;
+                if (flags.three_cycle) {
+                    mstate = MajState::WordCount;
+                } else {
+                    mstate = MajState::Brk;
+                }
+            } else {
+                if (flags.skip) {
+                    flags.skip = 0;
+                    regs.MA = EMU::incr(regs.PC);
+                } else {
+                    regs.MA = regs.PC;
+                }
+                mstate = MajState::Fetch;
+            }
+    }
+}
 
-void PDP8I::OPR() {
-    if (cpu_.regs.MB & M3) {
-        if (((cpu_.regs.MB & M6) && !(cpu_.regs.AC & EMU::mask)) ||
-            ((cpu_.regs.MB & M5) && ((cpu_.regs.AC & EMU::mask) & M0)) ||
-            ((cpu_.regs.MB & M7) && !(cpu_.regs.AC & EMU::link))) {
-            flags.skip = true;
-        }
-        if ((cpu_.regs.MB & M8)) {
-            flags.skip = !flags.skip;
-        }
-        if ((cpu_.regs.MB & 00002) && !(cpu_.regs.MB & 00001)) {
-            flags.run = false;
-        }
-        if (cpu_.regs.MB & 00100) {
-            cpu_.regs.AC &= EMU::link;
-        }
-        if (cpu_.regs.MB & 00004) {
-            cpu_.regs.AC |= cpu_.regs.SR;
+void PDP8I::T4Defer() {
+    if (regs.IR == static_cast<word_t>(EMU::Instr::JMP)) {
+        if (flags.dma) {
+            throw std::runtime_error{"Databreaks not implemented"};
+        } else if (flags.irq) {
+            regs.MA = 0;
+            regs.IR = static_cast<word_t>(EMU::Instr::JMS);
+            mstate = MajState::Execute;
+        } else {
+            regs.MA = regs.PC;
+            mstate = MajState::Execute;
         }
     } else {
-        if (cpu_.regs.MB & M4) {
-            cpu_.regs.AC &= EMU::link;
+        if (EMU::is_autoidx(regs.MA)) {
+            regs.MA = EMU::incr(regs.MEM);
+        } else {
+            regs.MA = regs.MEM;
         }
-        if (cpu_.regs.MB & M6) {
-            cpu_.regs.AC &= EMU::link;
-            cpu_.regs.AC |= (~cpu_.regs.AC) & EMU::mask;
+    }
+}
+
+void PDP8I::IOT() {
+}
+
+void PDP8I::OPR() {
+    if (regs.MB & M3) {
+        flags.skip = false;
+        if (((regs.MB & M6) && !(regs.AC & EMU::mask)) ||
+            ((regs.MB & M5) && ((regs.AC & EMU::mask) & M0)) ||
+            ((regs.MB & M7) && !(regs.AC & EMU::link))) {
+            flags.skip = true;
         }
-        if (cpu_.regs.MB & M5) {
-            cpu_.regs.L = 0;
+        if ((regs.MB & M8)) {
+            flags.skip = !flags.skip;
         }
-        if (cpu_.regs.MB & M7) {
-            cpu_.regs.L = !cpu_.regs.L;
+        if ((regs.MB & M10) && !(regs.MB & M11)) {
+            flags.run = false;
         }
-        if (cpu_.regs.MB & M8) {
+        if (regs.MB & M5) {
+            regs.AC &= EMU::link;
+        }
+        if (regs.MB & M9) {
+            regs.AC |= regs.SR;
+        }
+    } else {
+        if (regs.MB & M4) {
+            regs.AC &= EMU::link;
+        }
+        if (regs.MB & M6) {
+            regs.AC &= EMU::link;
+            regs.AC |= (~regs.AC) & EMU::mask;
+        }
+        if (regs.MB & M5) {
+            regs.L = 0;
+        }
+        if (regs.MB & M7) {
+            regs.L = !regs.L;
+        }
+        if (regs.MB & M8) {
             {
-                bool low = cpu_.regs.AC & M11;
-                cpu_.regs.AC >>= 1;
-                cpu_.regs.AC &= EMU::mask;
-                cpu_.regs.AC |= (cpu_.regs.L) ? 04000 : 0;
-                cpu_.regs.L = low;
+                bool low = regs.AC & M11;
+                regs.AC >>= 1;
+                regs.AC &= EMU::mask;
+                regs.AC |= (regs.L) ? M0 : 0;
+                regs.L = low;
             }
-            if (cpu_.regs.MB & M10) {
-                bool low = cpu_.regs.AC & M11;
-                cpu_.regs.AC >>= 1;
-                cpu_.regs.AC &= EMU::mask;
-                cpu_.regs.AC |= (cpu_.regs.L) ? 04000 : 0;
-                cpu_.regs.L = low;
+            if (regs.MB & M10) {
+                bool low = regs.AC & M11;
+                regs.AC >>= 1;
+                regs.AC &= EMU::mask;
+                regs.AC |= (regs.L) ? M0 : 0;
+                regs.L = low;
             }
         }
-        if (cpu_.regs.MB & M9) {
+        if (regs.MB & M9) {
             {
-                cpu_.regs.AC <<= 1;
-                cpu_.regs.AC |= (cpu_.regs.L) ? 1 : 0;
-                cpu_.regs.L = cpu_.regs.AC & EMU::link;
-                cpu_.regs.AC &= EMU::mask;
+                regs.AC <<= 1;
+                regs.AC |= (regs.L) ? 1 : 0;
+                regs.L = regs.AC & EMU::link;
+                regs.AC &= EMU::mask;
             }
-            if (cpu_.regs.MB & M10) {
-                cpu_.regs.AC <<= 1;
-                cpu_.regs.AC |= (cpu_.regs.L) ? 1 : 0;
-                cpu_.regs.L = cpu_.regs.AC & EMU::link;
-                cpu_.regs.AC &= EMU::mask;
+            if (regs.MB & M10) {
+                regs.AC <<= 1;
+                regs.AC |= (regs.L) ? 1 : 0;
+                regs.L = regs.AC & EMU::link;
+                regs.AC &= EMU::mask;
             }
         }
-        if (cpu_.regs.MB & M11) {
-            cpu_.regs.AC = EMU::incr(cpu_.regs.AC);
+        if (regs.MB & M11) {
+            regs.AC = EMU::incr(regs.AC);
         }
     }
 }

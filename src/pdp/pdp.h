@@ -6,15 +6,39 @@
 
 class PDP8I {
 public:
-private:
-    CPU cpu_;
-    Memory mem_;
+public:
+    Memory mem;
 
     struct {
         bool skip;
         bool pause;
         bool run;
+        bool inte;
+        bool irq;          // consider atomics
+        bool dma;          // same
+        bool three_cycle;  // same
     } flags;
+
+    struct Regs {
+        bool L;
+        word_t AC;
+        word_t PC;
+        word_t MA;
+        word_t MB;
+        word_t IR;
+        word_t SR;
+        word_t MQ;
+        word_t MEM;
+    } regs;
+
+    enum class MajState {
+        Fetch,
+        Defer,
+        Execute,
+        WordCount,
+        CurAddr,
+        Brk,
+    } mstate;
 
 private:
     void T1();
@@ -29,7 +53,11 @@ private:
 
     void MemWr();
 
-    void DecodeT3();
+    void T3Fetch();
+
+    void T4Fetch();
+
+    void T4Defer();
 
     void OPR();
 
