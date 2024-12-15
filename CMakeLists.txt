@@ -8,6 +8,8 @@ project(pdp8
     HOMEPAGE_URL "https://github.com/lubsanovdmitry/pdp8"
 )
 
+set (CMAKE_CXX_STANDARD 20)
+
 find_package(Catch2 3 REQUIRED)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)

@@ -2,6 +2,14 @@
 
 #include <stdexcept>
 
+void PDP8I::MemWr() {
+    mem.mem[memext.DF].data[regs.MA] = regs.MB;
+}
+
+void PDP8I::MemRead() {
+    regs.MEM = mem.mem[memext.DF].data[regs.MA];
+}
+
 void PDP8I::T1() {
     switch (mstate) {
         case MajState::Fetch:

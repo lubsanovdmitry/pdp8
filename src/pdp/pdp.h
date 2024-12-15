@@ -1,7 +1,8 @@
 #ifndef __PDP_H__
 #define __PDP_H__
 
-#include "../cpu/cpu.h"
+#include <atomic>
+
 #include "../mem/mem.h"
 
 class PDP8I {
@@ -12,13 +13,20 @@ public:
     struct {
         bool skip;
         bool pause;
-        bool run;
+        std::atomic<bool> run;
         bool inte;
         bool irq;          // consider atomics
         bool dma;          // same
         bool three_cycle;  // same
     } flags;
 
+    struct {
+        word_t IF;
+        word_t DF;
+        word_t IB;
+        word_t SF;
+        word_t BF;
+    } memext;
     struct Regs {
         bool L;
         word_t AC;
@@ -40,7 +48,6 @@ public:
         Brk,
     } mstate;
 
-private:
     void T1();
 
     void T2();
@@ -49,6 +56,23 @@ private:
 
     void T4();
 
+    void Run() {
+        while (true) {
+            while (flags.run.load() == false) {
+                flags.run.wait(false);
+            }
+            SingleStep();
+        }
+    }
+
+    void SingleStep() {
+        T1();
+        T2();
+        T3();
+        T4();
+    }
+
+private:
     void MemRead();
 
     void MemWr();
