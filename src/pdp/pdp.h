@@ -2,6 +2,7 @@
 #define __PDP_H__
 
 #include <atomic>
+#include <iostream>
 
 #include "../mem/mem.h"
 
@@ -47,6 +48,8 @@ public:
         CurAddr,
         Brk,
     } mstate;
+
+    void PrRegs();
 
     void T1();
 
