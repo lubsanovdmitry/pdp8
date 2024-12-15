@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-const std::string EXIT_TOKEN = "ex";
+constexpr std::string EXIT_TOKEN = "exit";
 
 void ConsoleParser::RunParser() {
     while (true) {
@@ -10,18 +10,20 @@ void ConsoleParser::RunParser() {
         std::string token;
         word_t arg;
         std::cin >> token;
-        if (comands_.find(token) == comands_.end()) {
-            throw std::runtime_error("There is no such comand");
-        }
-        if (comands_[token]->req_args) {
-            arg = ReadArg();
-            comands_[token]->arg = arg;
-        }
-        comands_[token]->Launch();
         if (token == EXIT_TOKEN) {
-            std::cout << "---Exited from PDP8 emulator---";
+
+            std::cout << "---Exited from PDP8 emulator---\n";
             return;
         }
+        if (commands_.find(token) == commands_.end()) {
+            std::cout << "There is no such comand" << std::endl;
+            continue;
+        }
+        if (commands_[token]->req_args) {
+            arg = ReadArg();
+            commands_[token]->arg = arg;
+        }
+        commands_[token]->Launch();
     }
 }
 

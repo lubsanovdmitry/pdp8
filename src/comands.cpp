@@ -21,6 +21,7 @@ void La::Launch() {
 
 void Ex::Launch() {
     emu.EX();
+    emu.PrRegs();
 }
 
 void Dp::Launch() {

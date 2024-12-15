@@ -55,6 +55,11 @@ public:
         pdp8_.PrRegs();
     }
 
+    ~Emulator() {
+        pdp8_.flags.finish = true;
+        Cont();
+    }
+
 private:
     PDP8I pdp8_;
     std::jthread t_;

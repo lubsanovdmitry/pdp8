@@ -19,6 +19,7 @@ public:
         bool irq;          // consider atomics
         bool dma;          // same
         bool three_cycle;  // same
+        bool finish;
     } flags;
 
     struct {
@@ -64,6 +65,9 @@ public:
             while (flags.run.load() == false) {
                 flags.run.wait(false);
             }
+            if (flags.finish) {
+                return;
+            }
             SingleStep();
         }
     }
@@ -90,6 +94,12 @@ public:
         regs.PC = EMU::incr(regs.PC);
         regs.MB = regs.SR;
         MemWr();
+    }
+
+    ~PDP8I() {
+        flags.finish = true;
+        flags.run.store(true);
+        flags.run.notify_one();
     }
 
 private:
