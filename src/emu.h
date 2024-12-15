@@ -51,6 +51,10 @@ public:
         pdp8_.regs.SR = w;
     }
 
+    void PrRegs() {
+        pdp8_.PrRegs();
+    }
+
 private:
     PDP8I pdp8_;
     std::jthread t_;

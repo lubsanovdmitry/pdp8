@@ -31,3 +31,7 @@ void Dp::Launch() {
 void Sr::Launch() {
     emu.SR(arg);
 }
+
+void PrRegs::Launch() {
+    emu.PrRegs();
+}

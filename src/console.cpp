@@ -1,4 +1,5 @@
 #include "console.h"
+
 #include <stdexcept>
 
 const std::string EXIT_TOKEN = "ex";

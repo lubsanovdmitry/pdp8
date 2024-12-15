@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+
 #include "defs.h"
 #include "emu.h"
 
@@ -54,3 +55,8 @@ struct Sr : BaseComand {
     void Launch() override;
 };
 
+struct PrRegs : BaseComand {
+    PrRegs() : BaseComand(false) {
+    }
+    void Launch() override;
+};

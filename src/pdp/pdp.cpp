@@ -10,6 +10,17 @@ void PDP8I::MemRead() {
     regs.MEM = mem.mem[memext.DF].data[regs.MA];
 }
 
+void PDP8I::PrRegs() {
+    std::cout << "AC: " << std::oct << regs.AC << std::endl;
+    std::cout << "PC: " << std::oct << regs.PC << std::endl;
+    std::cout << "MA: " << std::oct << regs.MA << std::endl;
+    std::cout << "MB: " << std::oct << regs.MB << std::endl;
+    std::cout << "IR: " << std::oct << regs.IR << std::endl;
+    std::cout << "SR: " << std::oct << regs.SR << std::endl;
+    std::cout << "MQ: " << std::oct << regs.MQ << std::endl;
+    std::cout << "MEM: " << std::oct << regs.MEM << std::endl;
+}
+
 void PDP8I::T1() {
     switch (mstate) {
         case MajState::Fetch:
@@ -196,7 +207,7 @@ void PDP8I::T4Fetch() {
                 regs.IR = static_cast<int>(EMU::Instr::JMS);
                 mstate = MajState::Execute;
             } else if (flags.dma) {
-                33a;
+                // 33a;
                 if (flags.three_cycle) {
                     mstate = MajState::WordCount;
                 } else {
@@ -238,7 +249,7 @@ void PDP8I::T4Defer() {
 void PDP8I::T4Execute() {
     if (flags.irq) {
         regs.MA = 0;
-        regs.IR = EMU::Instr::JMS;
+        regs.IR = static_cast<word_t>(EMU::Instr::JMS);
         mstate = MajState::Execute;
     } else if (flags.dma) {
         throw std::runtime_error{"Databreak not implemented"};
