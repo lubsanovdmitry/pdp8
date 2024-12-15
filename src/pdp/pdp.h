@@ -72,6 +72,23 @@ public:
         T4();
     }
 
+    void LA() {
+        regs.PC = regs.SR;
+    }
+
+    void EX() {
+        regs.MA = regs.PC;
+        regs.PC = EMU::incr(regs.PC);
+        MemRead();
+    }
+
+    void DP() {
+        regs.MA = regs.PC;
+        regs.PC = EMU::incr(regs.PC);
+        regs.MB = regs.SR;
+        MemWr();
+    }
+
 private:
     void MemRead();
 
