@@ -35,6 +35,22 @@ public:
         pdp8_.SingleStep();
     }
 
+    void LA() {
+        pdp8_.LA();
+    }
+
+    void EX() {
+        pdp8_.EX();
+    }
+
+    void DP() {
+        pdp8_.DP();
+    }
+
+    void SR(word_t w) {
+        pdp8_.regs.SR = w;
+    }
+
 private:
     PDP8I pdp8_;
     std::jthread t_;
